@@ -30,4 +30,7 @@
     'Ubuntu': {
         'log_dir': '/var/log/named'
     },
+    'jessie': {
+        'pkgs': ['bind9', 'bind9utils'],
+    },
 }, grain='os', merge=salt['pillar.get']('bind:lookup'))) %}
