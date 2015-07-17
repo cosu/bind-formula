@@ -1,6 +1,6 @@
 {% set map = salt['grains.filter_by']({
     'Debian': {
-        'pkgs': ['bind9', 'bind9utils', 'dnssec-tools'],
+        'pkgs': ['bind9', 'bind9utils'],
         'service': 'bind9',
         'config_source_dir': 'bind/files/debian',
         'config': '/etc/bind/named.conf',
@@ -29,8 +29,5 @@
 }, merge=salt['grains.filter_by']({
     'Ubuntu': {
         'log_dir': '/var/log/named'
-    },
-    'jessie': {
-        'pkgs': ['bind9', 'bind9utils'],
-    },
+    }
 }, grain='os', merge=salt['pillar.get']('bind:lookup'))) %}
