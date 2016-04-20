@@ -2,8 +2,7 @@ bind:
   lookup:
     pkgs:
       - bind
-    service:
-      - named
+    service: named
 
 bind:
   config:
@@ -12,7 +11,18 @@ bind:
     group: named
     mode: 640
     options:
-      allow-recursion: '{ any; };'  # Never include this on a public resolver
+      allow-recursion: '{ any; }'  # Never include this on a public resolver
+
+    # force bind to serve only one IP protocol (ipv4: 4, ipv6: 6). omitting this reverts to binds default of both.
+    protocol: 4
+
+    # For Debian based systems:
+    # If set to True, the default-zones configuration will be enabled. Defaults to False.
+    default_zones: True
+    # For Debian based systems:
+    # Include any additional configuration file(s) in named.conf
+    includes:
+      - /some/additional/named.conf
 
 bind:
   keys:
@@ -27,11 +37,22 @@ bind:
       notify: False
       allow-transfer:
         - 1.1.1.1
-        - 2.2.2.2 
+        - 2.2.2.2
     dynamic.domain.com:
       type: master
       allow-update: "key core_dhcp"
-      notify: True 
+      notify: True
+    sub.anotherdomain.com:
+      type: forward
+      forwarders:
+        - 10.9.8.7
+        - 10.9.8.5
+    sub.forwardonlydomain.com:
+      type: forward
+      forward: only
+      forwarders:
+        - 10.9.8.8
+        - 10.9.8.9
   configured_views:
     myview1:
       match_clients:
@@ -43,6 +64,10 @@ bind:
           notify: False
           update_policy:
             - "grant core_dhcp name dns_entry_allowed_to_update. ANY"
+  configured_acls:
+    my_net:
+      - 127.0.0.0/8
+      - 10.20.0.0/16
 
 bind:
   available_zones:

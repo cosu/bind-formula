@@ -21,7 +21,7 @@ zone "{{ key }}" {
     {%- endfor %}
   };
   {% else -%}
-  file "data/{{ file }}";
+  file "{{ file }}";
   {% if args['type'] == "master" -%}
     {% if args['notify'] -%}
   notify yes;

@@ -10,11 +10,22 @@
 {%- macro zone(key, args, file, masters) %}
 zone "{{ key }}" {
   type {{ args['type'] }};
-  {% if args['dnssec'] is defined and args['dnssec'] -%}
-  file "zones/{{ file }}.signed";
+  {% if args['type'] == 'forward' -%}
+    {% if args['forward'] is defined -%}
+       forward {{ args['forward'] }};
+    {%- endif %}
+  forwarders {
+    {% for forwarder in args.forwarders -%}
+      {{ forwarder }};
+    {%- endfor %}
+  };
   {% else -%}
-  file "zones/{{ file }}";
+  {% if args['dnssec'] is defined and args['dnssec'] -%}
+  file "{{ map.named_directory }}/{{ file }}.signed";
+  {% else -%}
+  file "{{ map.named_directory }}/{{ file }}";
   {%- endif %}
+
   {% if args['allow-update'] is defined -%}
   allow-update { {{args['allow-update']}}; };
   {%- endif %}
@@ -39,6 +50,7 @@ zone "{{ key }}" {
   {% else -%}
   notify no;
   masters { {{ masters }} };
+  {%- endif %}
   {%- endif %}
 };
 {%- endmacro %}
@@ -81,3 +93,11 @@ logging {
   };
   category queries { querylog; };
 };
+
+{%- for name, data in salt['pillar.get']('bind:configured_acls', {}).items() %}
+acl {{ name }} {
+  {%- for d in data %}
+  {{ d }};
+  {%- endfor %}
+};
+{%- endfor %}

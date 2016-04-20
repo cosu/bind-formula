@@ -20,7 +20,7 @@ bind_restart:
 
 {{ map.log_dir }}/query.log:
   file.managed:
-    - user: bind
+    - user: {{ salt['pillar.get']('bind:config:user', map.user) }}
     - group: {{ salt['pillar.get']('bind:config:group', map.group) }}
     - mode: 644
     - require:
@@ -66,6 +66,19 @@ bind_local_config:
       - file: {{ map.log_dir }}/query.log
     - watch_in:
       - service: bind
+
+{% if grains['os_family'] != 'Arch' %}
+bind_default_config:
+  file.managed:
+    - name: {{ map.default_config }}
+    - source: salt://{{ map.config_source_dir }}/default
+    - template: jinja
+    - user: root
+    - group: root
+    - mode: 644
+    - watch_in:
+      - service: bind_restart
+{% endif %}
 
 {% if grains['os_family'] == 'Debian' %}
 bind_key_config:
@@ -117,13 +130,13 @@ bind_default_zones:
         map: {{ map }}
 {% endif %}
 
-{% for key, args in salt['pillar.get']('bind:configured_zones', {}).iteritems() -%}
-{%- set file = salt['pillar.get']("bind:available_zones:" + key + ":file") %}
-{% if args['type'] == "master" -%}
-zones-{{ file }}:
+{% for zone, zone_data in salt['pillar.get']('bind:configured_zones', {}).iteritems() -%}
+{%- set file = salt['pillar.get']("bind:available_zones:" + zone + ":file") %}
+{% if file and zone_data['type'] == "master" -%}
+zones-{{ zone }}:
   file.managed:
     - name: {{ map.named_directory }}/{{ file }}
-    - source: 'salt://bind/zones/{{ file }}'
+    - source: 'salt://{{ map.zones_source_dir }}/{{ file }}'
     - user: {{ salt['pillar.get']('bind:config:user', map.user) }}
     - group: {{ salt['pillar.get']('bind:config:group', map.group) }}
     - mode: {{ salt['pillar.get']('bind:config:mode', '644') }}
@@ -132,26 +145,26 @@ zones-{{ file }}:
     - require:
       - file: named_directory
 
-{% if args['dnssec'] is defined and args['dnssec'] -%}
-signed-{{ file }}:
+{% if zone_data['dnssec'] is defined and zone_data['dnssec'] -%}
+signed-{{ zone }}:
   cmd.run:
     - cwd: {{ map.named_directory }}
-    - name: zonesigner -zone {{ key }} {{ file }}
+    - name: zonesigner -zone {{ zone }} {{ file }}
     - prereq:
-      - file: zones-{{ file }}
+      - file: zones-{{ zone }}
 {% endif %}
 
 {% endif %}
 {% endfor %}
 
 {%- for view, view_data in salt['pillar.get']('bind:configured_views', {}).iteritems() %}
-{% for key,args in view_data.get('configured_zones', {}).iteritems()  -%}
-{%- set file = salt['pillar.get']("bind:available_zones:" + key + ":file") %}
-{% if args['type'] == "master" -%}
-zones-{{ file }}:
+{% for zone, zone_data in view_data.get('configured_zones', {}).iteritems() -%}
+{%- set file = salt['pillar.get']("bind:available_zones:" + zone + ":file") %}
+{% if file and zone_data['type'] == "master" -%}
+zones-{{ view }}-{{ zone }}:
   file.managed:
     - name: {{ map.named_directory }}/{{ file }}
-    - source: 'salt://bind/zones/{{ file }}'
+    - source: 'salt://{{ map.zones_source_dir }}/{{ file }}'
     - user: {{ salt['pillar.get']('bind:config:user', map.user) }}
     - group: {{ salt['pillar.get']('bind:config:group', map.group) }}
     - mode: {{ salt['pillar.get']('bind:config:mode', '644') }}
@@ -160,13 +173,13 @@ zones-{{ file }}:
     - require:
       - file: named_directory
 
-{% if args['dnssec'] is defined and args['dnssec'] -%}
-signed-{{ file }}:
+{% if zone_data['dnssec'] is defined and zone_data['dnssec'] -%}
+signed-{{ view }}-{{ zone }}:
   cmd.run:
     - cwd: {{ map.named_directory }}
-    - name: zonesigner -zone {{ key }} {{ file }}
+    - name: zonesigner -zone {{ zone }} {{ file }}
     - prereq:
-      - file: zones-{{ file }}
+      - file: zones-{{ view }}-{{ zone }}
 {% endif %}
 
 {% endif %}
