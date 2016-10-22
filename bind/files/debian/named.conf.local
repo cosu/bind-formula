@@ -25,8 +25,7 @@ zone "{{ key }}" {
   {% else -%}
   file "{{ map.named_directory }}/{{ file }}";
   {%- endif %}
-
-  {% if args['allow-update'] is defined -%}
+  {%- if args['allow-update'] is defined %}
   allow-update { {{args['allow-update']}}; };
   {%- endif %}
   {%- if args.update_policy is defined %}
@@ -36,18 +35,19 @@ zone "{{ key }}" {
   {%- endfor %}
   };
   {%- endif %}
-  allow-transfer {
-  {% for remote in args.get('allow-transfer', {}) %}
-    {{ remote }};
-  {% endfor %}
-  };
-  {% if args['type'] == "master" -%}
-    {% if args['notify'] -%}
+  {%- if args['allow-transfer'] is defined %}
+  allow-transfer { {{ args.get('allow-transfer', []) | join('; ') }}; };
+  {%- endif %}
+  {%- if args['also-notify'] is defined %}
+  also-notify { {{ args.get('also-notify', []) | join('; ') }}; };
+  {%- endif %}
+  {%- if args['type'] == "master" -%}
+    {% if args['notify'] %}
   notify yes;
-    {% else -%}
+    {% else %}
   notify no;
     {%- endif -%}
-  {% else -%}
+  {% else %}
   notify no;
   masters { {{ masters }} };
   {%- endif %}
@@ -59,13 +59,13 @@ zone "{{ key }}" {
 include "{{ map.default_zones_config }}";
 {%- endif %}
 
-{% for key, args in salt['pillar.get']('bind:configured_zones', {}).iteritems() -%}
+{% for key, args in salt['pillar.get']('bind:configured_zones', {}).items() -%}
 {%- set file = salt['pillar.get']("bind:available_zones:" + key + ":file") %}
 {%- set masters = salt['pillar.get']("bind:available_zones:" + key + ":masters") %}
 {{ zone(key, args, file, masters) }}
 {% endfor %}
 
-{% for view, view_data in salt['pillar.get']('bind:configured_views', {}).iteritems() %}
+{% for view, view_data in salt['pillar.get']('bind:configured_views', {}).items() %}
 
 view {{ view }} {
 {%- if view == 'default' %}
@@ -78,7 +78,7 @@ match-clients {
 {%- endfor %}
 };
 
-{% for key, args in view_data.get('configured_zones', {}).iteritems() -%}
+{% for key, args in view_data.get('configured_zones', {}).items() -%}
 {%- set file = salt['pillar.get']("bind:available_zones:" + key + ":file") %}
 {%- set masters = salt['pillar.get']("bind:available_zones:" + key + ":masters") %}
   {{ zone(key, args, file, masters) }}

@@ -130,13 +130,14 @@ bind_default_zones:
         map: {{ map }}
 {% endif %}
 
-{% for zone, zone_data in salt['pillar.get']('bind:configured_zones', {}).iteritems() -%}
+{% for zone, zone_data in salt['pillar.get']('bind:configured_zones', {}).items() -%}
 {%- set file = salt['pillar.get']("bind:available_zones:" + zone + ":file") %}
 {% if file and zone_data['type'] == "master" -%}
 zones-{{ zone }}:
   file.managed:
     - name: {{ map.named_directory }}/{{ file }}
     - source: 'salt://{{ map.zones_source_dir }}/{{ file }}'
+    - template: jinja
     - user: {{ salt['pillar.get']('bind:config:user', map.user) }}
     - group: {{ salt['pillar.get']('bind:config:group', map.group) }}
     - mode: {{ salt['pillar.get']('bind:config:mode', '644') }}
@@ -157,14 +158,15 @@ signed-{{ zone }}:
 {% endif %}
 {% endfor %}
 
-{%- for view, view_data in salt['pillar.get']('bind:configured_views', {}).iteritems() %}
-{% for zone, zone_data in view_data.get('configured_zones', {}).iteritems() -%}
+{%- for view, view_data in salt['pillar.get']('bind:configured_views', {}).items() %}
+{% for zone, zone_data in view_data.get('configured_zones', {}).items() -%}
 {%- set file = salt['pillar.get']("bind:available_zones:" + zone + ":file") %}
 {% if file and zone_data['type'] == "master" -%}
 zones-{{ view }}-{{ zone }}:
   file.managed:
     - name: {{ map.named_directory }}/{{ file }}
     - source: 'salt://{{ map.zones_source_dir }}/{{ file }}'
+    - template: jinja
     - user: {{ salt['pillar.get']('bind:config:user', map.user) }}
     - group: {{ salt['pillar.get']('bind:config:group', map.group) }}
     - mode: {{ salt['pillar.get']('bind:config:mode', '644') }}
